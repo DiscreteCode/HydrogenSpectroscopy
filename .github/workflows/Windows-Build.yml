@@ -1,0 +1,64 @@
+name: Windows Build
+
+# Authoritative Windows build/verification path for this project.
+# PyInstaller produces platform-native executables and cannot
+# cross-compile a Windows .exe from Linux/macOS, so this workflow --
+# running on an actual windows-latest runner -- is how the Windows
+# build is verified, regardless of what OS local development happens
+# on. See docs/RELEASE_CHECKLIST.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install PyInstaller
+        run: pip install "pyinstaller>=6.3,<7.0"
+
+      - name: Run test suite
+        run: pytest
+
+      - name: Build with PyInstaller
+        run: pyinstaller HydrogenSpectroscopy.spec --noconfirm
+
+      - name: Verify executable was produced
+        shell: pwsh
+        run: |
+          $exe = "dist/HydrogenSpectroscopy/HydrogenSpectroscopy.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "Expected executable not found at $exe"
+            exit 1
+          }
+          Write-Host "Found: $exe"
+
+      - name: Package onedir distribution
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/HydrogenSpectroscopy/*" -DestinationPath "HydrogenSpectroscopy-Windows.zip"
+
+      - name: Upload Windows build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: HydrogenSpectroscopy-Windows
+          path: HydrogenSpectroscopy-Windows.zip
+          if-no-files-found: error
