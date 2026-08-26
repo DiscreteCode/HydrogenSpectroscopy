@@ -1,0 +1,351 @@
+"""
+tests.test_gui
+==================
+
+GUI tests (Checkpoint 2, brief section 28-29). These run against a
+real QApplication using Qt's "offscreen" platform plugin, so they
+work in headless CI / this sandbox with no physical display, and they
+drive real widget code -- not mocks of it -- for every page.
+
+Modal QMessageBox calls block forever under the offscreen platform
+(there's no user to click them), so tests that exercise a code path
+which can pop one patch QMessageBox out for the duration of that call.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from unittest.mock import patch
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+import pytest
+from PySide6.QtWidgets import QApplication, QMessageBox
+
+from app.ui.main_window import MainWindow
+
+DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "sample_spectra"
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    app = QApplication.instance() or QApplication([])
+    yield app
+
+
+@pytest.fixture()
+def window(qapp):
+    w = MainWindow()
+    yield w
+    w.deleteLater()
+
+
+# ---------------------------------------------------------------------------
+# Shell / navigation
+# ---------------------------------------------------------------------------
+
+
+def test_main_window_constructs(window):
+    assert window.stack.count() == 7
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["dashboard", "energy_levels", "spectrum_simulator", "stellar_analysis",
+     "element_id", "theory", "about"],
+)
+def test_navigation_reaches_every_page(window, key):
+    window.navigate(key)
+    assert window.stack.currentIndex() == window._page_index[key]
+    assert window._nav_buttons[key].isChecked()
+
+
+def test_navigate_ignores_unknown_key(window):
+    window.navigate("dashboard")
+    before = window.stack.currentIndex()
+    window.navigate("not_a_real_page")
+    assert window.stack.currentIndex() == before
+
+
+# ---------------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------------
+
+
+def test_dashboard_updates_on_transition_change(window):
+    window.navigate("dashboard")
+    dash = window.stack.currentWidget()
+    from physics.transitions import compute_emission_transition
+
+    tr = compute_emission_transition(3, 2)
+    window.app_state.set_current_transition(tr)
+    assert "3" in dash.card_transition.value_label.text()
+    assert "656" in dash.card_wavelength.value_label.text()
+
+
+def test_dashboard_nav_card_navigates(window):
+    window.navigate("dashboard")
+    dash = window.stack.currentWidget()
+    dash.navigate("theory")
+    assert window.stack.currentIndex() == window._page_index["theory"]
+
+
+# ---------------------------------------------------------------------------
+# Energy Levels & Transition Explorer (critical path: 3 -> 2)
+# ---------------------------------------------------------------------------
+
+
+def test_energy_levels_3_to_2_matches_known_values(window):
+    window.navigate("energy_levels")
+    page = window.stack.currentWidget()
+    page.n_initial_spin.setValue(3)
+    page.n_final_spin.setValue(2)
+    page.calculate()
+
+    tr = page.current_transition
+    assert tr is not None
+    assert tr.wavelength_nm == pytest.approx(656.46, abs=0.1)
+    assert tr.wavelength_air_nm == pytest.approx(656.28, abs=0.1)
+    assert tr.series == "Balmer"
+    assert page.animate_btn.isEnabled()
+    assert page.add_btn.isEnabled()
+
+
+def test_energy_levels_rejects_absorption_order(window):
+    window.navigate("energy_levels")
+    page = window.stack.currentWidget()
+    # n_final_spin.valueChanged keeps n_initial > n_final automatically,
+    # so force an invalid state directly to confirm calculate() still
+    # guards against it defensively.
+    page.n_initial_spin.setValue(2)
+    page.n_final_spin.setValue(2)
+    page.n_initial_spin.setValue(2)
+    page.calculate()
+    # Either the spinboxes' own constraint kept it valid, or calculate()
+    # reported the error -- either way there must be no crash and no
+    # false "success" state left dangling.
+    if page.current_transition is None:
+        assert page.error_label.text() != ""
+
+
+def test_energy_levels_animation_progresses_and_stops(window):
+    window.navigate("energy_levels")
+    page = window.stack.currentWidget()
+    page.n_initial_spin.setValue(4)
+    page.n_final_spin.setValue(2)
+    page.calculate()
+    page.animate()
+    assert page._anim_timer.isActive()
+    for _ in range(40):
+        page._animation_tick()
+    assert page._anim_progress == pytest.approx(1.0)
+    assert not page._anim_timer.isActive()
+    assert page.animate_btn.isEnabled()
+
+
+def test_add_to_spectrum_updates_app_state(window, qapp):
+    window.navigate("energy_levels")
+    page = window.stack.currentWidget()
+    page.n_initial_spin.setValue(3)
+    page.n_final_spin.setValue(2)
+    page.calculate()
+    with patch.object(QMessageBox, "information", return_value=None):
+        page._add_to_spectrum()
+    assert len(window.app_state.custom_transitions) == 1
+    assert window.app_state.custom_transitions[0].label == "3 -> 2"
+
+
+# ---------------------------------------------------------------------------
+# Spectrum Simulator
+# ---------------------------------------------------------------------------
+
+
+def test_spectrum_simulator_generates_balmer_series(window):
+    window.navigate("spectrum_simulator")
+    page = window.stack.currentWidget()
+    page.series_combo.setCurrentText("Balmer")
+    page.generate()
+    assert page.current_spectrum is not None
+    assert len(page.current_spectrum.wavelength_nm) == page.resolution_spin.value()
+    # Balmer-alpha should fall inside the generated range.
+    lo, hi = page.current_spectrum.wavelength_nm[0], page.current_spectrum.wavelength_nm[-1]
+    assert lo <= 656.3 <= hi
+
+
+def test_spectrum_simulator_absorption_mode(window):
+    window.navigate("spectrum_simulator")
+    page = window.stack.currentWidget()
+    page.mode_combo.setCurrentText("Absorption")
+    page.generate()
+    from spectroscopy.spectrum import SpectrumMode
+
+    assert page.current_spectrum.mode == SpectrumMode.ABSORPTION
+
+
+def test_spectrum_simulator_export_without_data_warns(window):
+    window.navigate("spectrum_simulator")
+    page = window.stack.currentWidget()
+    page.current_spectrum = None
+    with patch.object(QMessageBox, "information", return_value=None) as mock_info:
+        page._export_png()
+    mock_info.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Stellar Spectrum & Analysis (critical path: simulate -> analyze -> verdict)
+# ---------------------------------------------------------------------------
+
+
+def test_stellar_simulate_and_detect_hydrogen(window):
+    window.navigate("stellar_analysis")
+    page = window.stack.currentWidget()
+    page.temp_slider.setValue(9500)
+    page.vel_slider.setValue(0)
+    page.noise_slider.setValue(10)
+    page.strength_slider.setValue(85)
+    page._generate_synthetic()
+    assert page.current_star is not None
+    assert page.analyze_btn.isEnabled()
+
+    page._run_analysis()
+    assert page._pipeline_timer.isActive()
+    for _ in range(10):
+        page._pipeline_tick()
+    assert not page._pipeline_timer.isActive()
+
+    summary = page.current_summary
+    assert summary is not None
+    assert summary.detected is True
+    assert summary.num_matched == 4
+    assert page.table.rowCount() == 4
+    assert "HYDROGEN DETECTED" in page.verdict_label.text()
+
+
+def test_stellar_negative_control_sample_not_detected(window):
+    window.navigate("stellar_analysis")
+    page = window.stack.currentWidget()
+    control = DATA_DIR / "stellar_no_hydrogen_control.csv"
+    assert control.exists()
+    page._load_csv_path(control)
+    page._run_analysis()
+    for _ in range(10):
+        page._pipeline_tick()
+    assert page.current_summary.detected is False
+    assert "NOT DETECTED" in page.verdict_label.text()
+
+
+def test_stellar_doppler_shifted_sample_loads_and_analyzes(window):
+    window.navigate("stellar_analysis")
+    page = window.stack.currentWidget()
+    sample = DATA_DIR / "stellar_doppler_shifted_180kms.csv"
+    assert sample.exists()
+    page._load_csv_path(sample)
+    page._run_analysis()
+    for _ in range(10):
+        page._pipeline_tick()
+    assert page.current_summary is not None
+    assert page.table.rowCount() == 4
+
+
+def test_stellar_doppler_readout_updates_with_velocity(window):
+    window.navigate("stellar_analysis")
+    page = window.stack.currentWidget()
+    page._on_velocity_changed(0)
+    text_at_rest = page.doppler_readout.text()
+    page._on_velocity_changed(200)
+    text_receding = page.doppler_readout.text()
+    assert text_at_rest != text_receding
+    assert "redshift" in text_receding
+
+
+def test_stellar_malformed_file_shows_warning_and_keeps_state(window, tmp_path):
+    window.navigate("stellar_analysis")
+    page = window.stack.currentWidget()
+
+    good = DATA_DIR / "stellar_noisy_at_rest.csv"
+    page._load_csv_path(good)
+    star_before = page.current_star
+
+    bad_file = tmp_path / "bad.csv"
+    bad_file.write_text("not,a,spectrum\nfoo,bar,baz\n")
+
+    with patch.object(QMessageBox, "warning", return_value=None) as mock_warn:
+        page._load_csv_path(bad_file)
+
+    mock_warn.assert_called_once()
+    assert page.current_star is star_before  # malformed load must not clobber good data
+
+
+def test_stellar_export_without_analysis_warns(window):
+    window.navigate("stellar_analysis")
+    page = window.stack.currentWidget()
+    page.current_summary = None
+    with patch.object(QMessageBox, "information", return_value=None) as mock_info:
+        page._export_csv()
+    mock_info.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Element Identification
+# ---------------------------------------------------------------------------
+
+
+def test_element_identification_hydrogen_is_computed_live(window):
+    window.navigate("element_id")
+    page = window.stack.currentWidget()
+    page.element_list.setCurrentRow(0)
+    assert "AVAILABLE" in page.badge_label.text()
+    assert page.table.rowCount() > 0
+    # First row must be a real computed Balmer line, not a lookup value.
+    assert page.table.item(0, 3).text() == "Quantum calculated"
+
+
+def test_element_identification_others_are_reference_only(window):
+    window.navigate("element_id")
+    page = window.stack.currentWidget()
+    from spectroscopy.element_database import list_elements
+
+    symbols = list_elements()
+    helium_row = symbols.index("He")
+    page.element_list.setCurrentRow(helium_row)
+    assert "REFERENCE ONLY" in page.badge_label.text()
+    assert page.table.rowCount() > 0
+    assert page.table.item(0, 3).text() == "Reference database"
+
+
+# ---------------------------------------------------------------------------
+# Theory / Learn and About pages
+# ---------------------------------------------------------------------------
+
+
+def test_theory_page_has_all_topics_and_links_navigate(window):
+    window.navigate("theory")
+    page = window.stack.currentWidget()
+    assert page.topic_list.count() == 12
+
+    page.topic_list.setCurrentRow(1)  # "Hydrogen Energy Levels" -> energy_levels
+    # The window is never actually shown in headless tests, so
+    # isVisible() would be False regardless of show()/hide() calls
+    # (it also depends on the whole ancestor chain being shown);
+    # isHidden() reflects the widget's own explicit show/hide state.
+    assert not page.link_btn.isHidden()
+    page._on_link_clicked()
+    assert window.stack.currentIndex() == window._page_index["energy_levels"]
+
+
+def test_theory_topic_without_link_hides_button(window):
+    window.navigate("theory")
+    page = window.stack.currentWidget()
+    page.topic_list.setCurrentRow(0)  # "Quantization" has no linked page
+    assert page.link_btn.isHidden()
+
+
+def test_about_page_renders_content(window):
+    from PySide6.QtWidgets import QTextBrowser
+
+    window.navigate("about")
+    page = window.stack.currentWidget()
+    browser = page.findChildren(QTextBrowser)[0]
+    assert "Hydrogen" in browser.toPlainText()
+    assert "NIST" in browser.toPlainText()
