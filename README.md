@@ -25,20 +25,21 @@ Quantum Energy Levels
 Hydrogen Detection
 ```
 
-Everything in that chain is computed live from first principles
-(`E_n = -13.6 eV/n^2` and the Rydberg formula) -- nothing is a hardcoded
-lookup table. The application then simulates a stellar absorption
-spectrum, searches it for the hydrogen Balmer fingerprint, and reports
-a detection verdict, exactly like a (simplified, educational) working
-spectroscopy pipeline.
+Hydrogen energy levels and transitions are computed live from the model
+(`E_n = -13.6 eV/n^2` and the Rydberg relation). The app also includes
+clearly labeled reference wavelengths for helium, sodium, calcium and iron.
+It simulates stellar absorption spectra, searches for line patterns, and
+reports detections. Multi-element abundances are synthetic input parameters,
+not values inferred from real stellar observations.
 
 ## Status
 
-The physics/spectroscopy backend and the full PySide6 desktop GUI are
-both complete. This checkpoint adds final documentation, resource-path
-hardening for packaging, and Windows executable build tooling
-(PyInstaller + GitHub Actions). See `docs/PROGRESS.md` for the
-phase-by-phase development history.
+The application includes the original hydrogen spectroscopy workflow and a
+Review 2 Stellar Composition Analyzer. Hydrogen transitions are calculated
+by the physics engine; He/Na/Ca/Fe use labeled reference lines. The
+composition page creates synthetic spectra with adjustable relative
+abundance weights, shows normalized input composition, and includes a
+mystery-star challenge. See `docs/PROGRESS.md` for development details.
 
 ## Features
 
@@ -56,8 +57,11 @@ phase-by-phase development history.
   export, live Doppler (rest/observed wavelength) readout
 - **Element Identification** -- hydrogen shown as live quantum-calculated;
   helium/sodium/calcium/iron shown as clearly labeled reference-only
-  lookup data (to demonstrate the matching architecture generalizes,
-  without claiming those elements are quantum-computed here)
+  lookup data (not quantum-computed in this app)
+- **Stellar Composition Analyzer** -- adjustable synthetic H/He/Na/Ca/Fe
+  abundance inputs, multi-element absorption spectrum, noise control,
+  mystery-star challenge, solution reveal, and CSV export. The simplified
+  line-depth model is educational and is not an astrophysical abundance solver.
 - **Theory / Learn** -- the underlying physics with equations, linked
   into the relevant interactive page
 - **About / References** -- project purpose, scientific scope, honest
@@ -92,15 +96,11 @@ tree headlessly via Qt's offscreen platform plugin
 (`QT_QPA_PLATFORM=offscreen`, set automatically by the test module),
 so the full suite also runs in CI with no physical display.
 
-As of the last checkpoint with an environment able to execute PySide6
-and pytest, the documented result was **189/189 tests passing** (~93%
-combined coverage across `physics` + `spectroscopy` + `visualization`;
-`app/` is exercised by `test_gui.py` but not included in the coverage
-source list). This checkpoint added `tests/test_paths.py` (resource-path
-resolution, including a simulated PyInstaller-frozen environment) on
-top of that baseline. Run `pytest` yourself to get a current count for
-your environment -- see `docs/RELEASE_CHECKLIST.md` for exactly what to
-verify before a release.
+The current development environment does not have PySide6 installed, so
+GUI tests cannot run here. All 173 non-GUI tests pass. Two GUI regression
+tests were added for the composition page and mystery-solution masking;
+the full suite and Windows build must be verified by GitHub Actions before
+release. See `docs/RELEASE_CHECKLIST.md`.
 
 ## Windows executable
 
@@ -219,16 +219,16 @@ main.py                    Entry point (QApplication + MainWindow)
 app/
     paths.py                Resource-path resolution (source vs. PyInstaller-frozen)
     controllers/             Shared cross-page state (AppState)
-    ui/                       The 7 GUI pages + MainWindow shell
+    ui/                       The 8 GUI pages + MainWindow shell
     widgets/                  Small reusable widget builders
     resources/style.qss       Dark scientific-instrument theme
 physics/                   Pure physics engine -- zero GUI dependency
-spectroscopy/               Spectrum construction, peak detection, hydrogen matching, CSV I/O
+spectroscopy/               Spectrum construction, element references, composition simulation, peak detection and I/O
 visualization/               Matplotlib plotting helpers used by the GUI
 data/sample_spectra/         4 sample CSVs (see data/sample_spectra/README.md)
 scripts/generate_sample_spectra.py   Regenerates the sample CSVs from the backend
-tests/                      158 test functions (189 collected cases incl. parametrization)
-docs/                      PROGRESS.md, REFERENCES.md, RELEASE_CHECKLIST.md
+tests/                      Backend and headless GUI regression tests
+docs/                      PROGRESS.md, REFERENCES.md, RELEASE_CHECKLIST.md, REVIEW2_HANDOFF.md
 HydrogenSpectroscopy.spec   PyInstaller build spec
 build.bat                   Windows developer build script
 .github/workflows/windows-build.yml   Windows CI build + test + artifact upload

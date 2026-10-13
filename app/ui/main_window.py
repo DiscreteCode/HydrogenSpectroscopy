@@ -28,6 +28,7 @@ from app.controllers.app_state import AppState
 from app.ui.about_page import AboutPage
 from app.ui.dashboard_page import DashboardPage
 from app.ui.element_identification_page import ElementIdentificationPage
+from app.ui.composition_page import CompositionPage
 from app.ui.energy_levels_page import EnergyLevelsPage
 from app.ui.spectrum_simulator_page import SpectrumSimulatorPage
 from app.ui.stellar_analysis_page import StellarAnalysisPage
@@ -40,6 +41,7 @@ NAV_SECTIONS = [
     ("Spectrum Simulator", "spectrum_simulator"),
     ("Stellar Spectrum && Analysis", "stellar_analysis"),
     ("Element Identification", "element_id"),
+    ("Stellar Composition", "composition"),
     ("Theory / Learn", "theory"),
     ("About / References", "about"),
 ]
@@ -100,7 +102,7 @@ class MainWindow(QMainWindow):
         self._build_pages()
 
         self.statusBar().showMessage(
-            "Physics engine: E\u2099 = -13.6 eV/n\u00b2 \u2014 all values computed live, nothing hardcoded."
+            "Hydrogen transitions are computed live; He, Na, Ca and Fe use labeled reference lines."
         )
 
         self.navigate("dashboard")
@@ -112,6 +114,7 @@ class MainWindow(QMainWindow):
             ("spectrum_simulator", SpectrumSimulatorPage(self.app_state)),
             ("stellar_analysis", StellarAnalysisPage()),
             ("element_id", ElementIdentificationPage()),
+            ("composition", CompositionPage()),
             ("theory", TheoryPage(self.navigate)),
             ("about", AboutPage()),
         ]

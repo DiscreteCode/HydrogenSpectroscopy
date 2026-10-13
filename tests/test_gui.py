@@ -47,13 +47,13 @@ def window(qapp):
 
 
 def test_main_window_constructs(window):
-    assert window.stack.count() == 7
+    assert window.stack.count() == 8
 
 
 @pytest.mark.parametrize(
     "key",
     ["dashboard", "energy_levels", "spectrum_simulator", "stellar_analysis",
-     "element_id", "theory", "about"],
+     "element_id", "composition", "theory", "about"],
 )
 def test_navigation_reaches_every_page(window, key):
     window.navigate(key)
@@ -349,3 +349,82 @@ def test_about_page_renders_content(window):
     browser = page.findChildren(QTextBrowser)[0]
     assert "Hydrogen" in browser.toPlainText()
     assert "NIST" in browser.toPlainText()
+
+
+# ---------------------------------------------------------------------------
+# Multi-element synthetic composition analyzer
+# ---------------------------------------------------------------------------
+
+
+def test_composition_page_generates_five_element_summary(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    assert page.current is not None
+    assert page.table.rowCount() == 5
+    assert page.sliders["H"].value() == 70
+
+
+def test_mystery_star_hides_abundances_until_revealed(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    page._load_mystery_star()
+    assert page._challenge_active
+    assert page.reveal_btn.isEnabled()
+    assert page.table.item(0, 1).text() == "Hidden"
+    page._reveal_solution()
+    assert not page.reveal_btn.isEnabled()
+    assert page.table.item(0, 1).text().endswith("%")
+
+# ---------------------------------------------------------------------------
+# Stellar Composition Analyzer (Review 2 feature)
+# ---------------------------------------------------------------------------
+
+
+def test_composition_page_generates_multielement_spectrum(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    assert page.current is not None
+    assert page.table.rowCount() == 5
+    assert page.composition_ax.get_title() == "Input Composition"
+    assert len(page.composition_ax.patches) == 5
+    assert "normalized simulation inputs" in page.status.text().lower()
+
+
+def test_mystery_star_hides_abundances_until_revealed(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    page._load_mystery_star()
+
+    assert page._challenge_active is True
+    assert page.reveal_btn.isEnabled()
+    assert all(page.table.item(row, 1).text() == "Hidden" for row in range(5))
+    assert all(page.table.item(row, 2).text() == "Hidden" for row in range(5))
+    assert all(page.table.item(row, 3).text() == "Hidden" for row in range(5))
+    assert all(page.table.item(row, 4).text() == "Hidden" for row in range(5))
+    assert page.composition_ax.get_title() == "Mystery Composition"
+    assert len(page.composition_ax.patches) == 0
+
+    page._reveal_solution()
+    assert page._challenge_revealed is True
+    assert page.table.item(0, 1).text() == "80.0%"
+    assert len(page.composition_ax.patches) == 5
+    assert not page.reveal_btn.isEnabled()
+
+
+def test_mystery_csv_export_does_not_leak_solution(window, tmp_path):
+    import csv
+
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    page._load_mystery_star()
+    export_path = tmp_path / "mystery.csv"
+    with patch("app.ui.composition_page.QFileDialog.getSaveFileName",
+               return_value=(str(export_path), "CSV Files (*.csv)")), \
+         patch.object(QMessageBox, "information", return_value=None):
+        page._export_csv()
+
+    with export_path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.reader(handle))
+    element_rows = [row for row in rows if row and row[0] in {"Hydrogen", "Helium", "Sodium", "Calcium", "Iron"}]
+    assert len(element_rows) == 5
+    assert all(row[1:6] == ["Hidden"] * 5 for row in element_rows)
