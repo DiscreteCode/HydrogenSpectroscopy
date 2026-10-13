@@ -10,17 +10,19 @@ CI runner) that this checkpoint's authoring environment did not have.
 
 - [ ] `pip install -r requirements.txt` succeeds
 - [ ] `python main.py` launches the application with no errors
-- [ ] `pytest` -- all tests pass (baseline at last full run: 189/189;
-      `tests/test_paths.py` added this checkpoint, statically verified
-      with plain `python3`, not yet run under `pytest` in this
-      environment -- see README's Testing section)
-- [ ] All 7 GUI pages open without error: Dashboard, Energy Levels,
+- [ ] `pytest` -- all tests pass (173 non-GUI cases pass in the current environment; GUI tests require
+      PySide6 and are pending the Windows CI run -- see README's Testing section)
+- [ ] All 8 GUI pages open without error: Dashboard, Energy Levels,
       Spectrum Simulator, Stellar Analysis, Element Identification,
-      Theory, About
+      Stellar Composition, Theory, About
 - [ ] All 4 sample spectra load from the Stellar Analysis page
 - [ ] CSV/TXT spectrum import works, including graceful rejection of a
       malformed file (clean message, not a traceback)
 - [ ] CSV/PNG/TXT export works from the relevant pages
+
+- [ ] Stellar Composition Analyzer: generate a spectrum, inspect normalized
+      abundance bars/table, load a mystery star, verify abundances remain hidden,
+      reveal the solution, and export CSV.
 
 ## Scientific
 

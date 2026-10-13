@@ -43,12 +43,13 @@ scientific-instrument theme</li>
 </ul>
 
 <h3 style='color:#9d7ce8;'>Scientific Scope</h3>
-<p>Hydrogen's energy levels and every transition wavelength shown anywhere in this
-application are computed live from first principles, never looked up from a hardcoded
-table. Vacuum and standard-air wavelengths are both tracked and never conflated. The
-Doppler shift uses the standard classical formula (&Delta;&lambda;/&lambda; = v/c,
-exact to about one part in a million at stellar velocities), with an exact relativistic
-formula also implemented and available.</p>
+<p>Hydrogen's energy levels and hydrogen transition wavelengths are computed live from
+the quantum model, rather than looked up from a hardcoded line table. Helium, sodium,
+calcium and iron use clearly labeled reference wavelengths in the element-identification
+and synthetic-composition demonstrations. Vacuum and standard-air wavelengths are
+tracked separately where applicable. The Doppler shift uses the standard classical
+formula (&Delta;&lambda;/&lambda; = v/c) by default, with an exact relativistic formula
+also implemented.</p>
 
 <h3 style='color:#e8c04f;'>Honest Limitations</h3>
 <ul>
@@ -58,9 +59,13 @@ blackbody-style curve, not a precise stellar model atmosphere.</li>
 <li>Line intensities use a simple illustrative n&sup3;-style falloff, not a real
 oscillator-strength or LTE/non-LTE calculation.</li>
 <li>Only hydrogen is quantum-mechanically computed. Helium, sodium, calcium, and iron
-appear in the Element Identification page only as clearly labeled reference lookup
-data, to demonstrate that the matching architecture generalizes &mdash; they are not
-computed by this application.</li>
+use a small, clearly labeled reference-line subset in the Element Identification and
+Stellar Composition pages; their atomic transitions are not computed by this application.</li>
+<li>The Stellar Composition Analyzer generates synthetic spectra from user-controlled
+relative abundance weights. It does not infer real elemental concentrations from an
+observed star. Line strengths also depend on temperature, ionization, and atmospheric
+conditions, so the plotted percentages are simulation inputs rather than astrophysical
+measurements.</li>
 </ul>
 
 <h3 style='color:#9d7ce8;'>References</h3>
