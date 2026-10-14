@@ -98,7 +98,9 @@ runner, which is the project's authoritative Windows build path).
       wavelengths.
 - [x] Added `app/ui/composition_page.py`: adjustable relative-abundance weights,
       noise control, spectral plot, normalized-composition bar chart, line-count/mean-depth
-      summary, mystery-star challenge with hidden solution, and CSV export.
+      summary, clear color-coded detection status, and CSV export.
+- [x] Removed the mystery-star challenge in favor of a practical detection-status
+      indicator that reports detected element patterns at a glance.
 - [x] Fixed a challenge-answer leak: abundance bars remain hidden until the solution
       is revealed, just like the abundance values in the table.
 - [x] Fixed a modeling bug where zero-abundance elements could still create
@@ -110,7 +112,7 @@ runner, which is the project's authoritative Windows build path).
 - [x] Updated the navigation count and documentation to distinguish calculated
       hydrogen transitions from reference-only lines for other elements.
 - [x] 173 non-GUI tests pass; Python syntax compilation passes.
-- [x] Added GUI regression tests for the composition chart and mystery-answer masking.
+- [x] Added GUI regression tests for composition charts, detection status, and CSV export.
 - [ ] Full GUI suite and Windows executable still need to run on a Windows or
       PySide6-capable environment. PySide6 installation was unavailable in
       the current offline environment, so no GUI/build success is claimed.
