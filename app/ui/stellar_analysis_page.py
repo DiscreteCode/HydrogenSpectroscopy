@@ -160,7 +160,7 @@ class StellarAnalysisPage(QWidget):
         controls_layout.addWidget(self.element_combo)
 
         controls_layout.addWidget(section_header("Analyze"))
-        self.analyze_btn = QPushButton("Run Element Detection")
+        self.analyze_btn = QPushButton("Analyze Selected Element")
         self.analyze_btn.setObjectName("accentButton")
         self.analyze_btn.clicked.connect(self._run_analysis)
         self.analyze_btn.setEnabled(False)
@@ -358,7 +358,7 @@ class StellarAnalysisPage(QWidget):
         self.verdict_label.setText(summary.message)
 
     def _reset_verdict(self):
-        self.verdict_label.setText("Spectrum ready. Select an element and click 'Run Element Detection'.")
+        self.verdict_label.setText("Spectrum ready. Select an element and click 'Analyze Selected Element'.")
         self.verdict_label.setStyleSheet(
             "font-size: 15px; font-weight: 700; padding: 10px; border-radius: 8px; "
             "background-color: #131a2b; color: #97a3ba;"
