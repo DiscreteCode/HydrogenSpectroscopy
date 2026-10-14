@@ -2,12 +2,13 @@
 app.ui.stellar_analysis_page
 ===============================
 
-The flagship demonstration page (brief sections 10-12 and the full
-section-32 demo flow): simulate or load a stellar spectrum, then run
-the hydrogen line-matching pipeline and report a verdict.
+The flagship demonstration page: simulate or load a stellar spectrum, select
+one of five elements, and compare the observed line pattern with its references.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
@@ -32,7 +33,10 @@ from app.widgets.common import card_frame, page_header, section_header
 from app.widgets.mpl_canvas import MplCanvas
 from physics.doppler import doppler_result
 from physics.transitions import compute_emission_transition
-from spectroscopy.analyzer import HydrogenDetectionSummary, StellarSpectrum, generate_synthetic_stellar_spectrum, match_hydrogen_lines
+from spectroscopy.analyzer import HydrogenDetectionSummary, StellarSpectrum
+from spectroscopy.composition import generate_composition_spectrum
+from spectroscopy.element_database import ELEMENT_DATABASE, LineSource
+from spectroscopy.element_analyzer import match_element_lines
 from spectroscopy.io_utils import (
     SpectrumImportError,
     export_detection_report_txt,
@@ -57,7 +61,7 @@ class StellarAnalysisPage(QWidget):
         self._pipeline_stages = [
             "Observed spectrum acquired…",
             "Searching for absorption features…",
-            "Comparing against hydrogen reference wavelengths…",
+            "Comparing against selected-element line references…",
             "Finalizing verdict…",
         ]
 
@@ -66,8 +70,8 @@ class StellarAnalysisPage(QWidget):
         root.setSpacing(10)
         root.addWidget(page_header(
             "Stellar Spectrum Analysis",
-            "Simulate or load a stellar spectrum, then let the analyzer search it for the "
-            "quantum-mechanical fingerprints of hydrogen.",
+            "Simulate or load a spectrum, then test for hydrogen, helium, sodium, calcium, or iron "
+            "using quantum-calculated hydrogen lines and clearly labeled reference lines for other elements.",
         ))
 
         body = QHBoxLayout()
@@ -117,12 +121,12 @@ class StellarAnalysisPage(QWidget):
         self.noise_slider.valueChanged.connect(lambda v: self.noise_label.setText(f"Noise: {v / 10:.1f}%"))
         controls_layout.addWidget(self.noise_slider)
 
-        self.strength_label = QLabel("H line strength: 70%")
+        self.strength_label = QLabel("Hydrogen contribution: 70%")
         controls_layout.addWidget(self.strength_label)
         self.strength_slider = QSlider(Qt.Horizontal)
         self.strength_slider.setRange(0, 100)
         self.strength_slider.setValue(70)
-        self.strength_slider.valueChanged.connect(lambda v: self.strength_label.setText(f"H line strength: {v}%"))
+        self.strength_slider.valueChanged.connect(lambda v: self.strength_label.setText(f"Hydrogen contribution: {v}%"))
         controls_layout.addWidget(self.strength_slider)
 
         gen_btn = QPushButton("Generate Synthetic Stellar Spectrum")
@@ -147,8 +151,16 @@ class StellarAnalysisPage(QWidget):
         load_csv_btn.clicked.connect(self._load_csv)
         controls_layout.addWidget(load_csv_btn)
 
+        controls_layout.addWidget(section_header("Identify an Element"))
+        self.element_combo = QComboBox()
+        for symbol, entry in ELEMENT_DATABASE.items():
+            source_label = "quantum model" if entry.source == LineSource.QUANTUM_CALCULATED else "reference lines"
+            self.element_combo.addItem(f"{entry.name} ({symbol}) · {source_label}", symbol)
+        self.element_combo.setCurrentIndex(0)
+        controls_layout.addWidget(self.element_combo)
+
         controls_layout.addWidget(section_header("Analyze"))
-        self.analyze_btn = QPushButton("Run Hydrogen Detection")
+        self.analyze_btn = QPushButton("Run Element Detection")
         self.analyze_btn.setObjectName("accentButton")
         self.analyze_btn.clicked.connect(self._run_analysis)
         self.analyze_btn.setEnabled(False)
@@ -197,7 +209,7 @@ class StellarAnalysisPage(QWidget):
         table_layout.addLayout(header_row)
 
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Line", "Expected (nm)", "Observed (nm)", "Δ (nm)", "Match"])
+        self.table.setHorizontalHeaderLabels(["Element / line", "Expected (nm)", "Observed (nm)", "Δ (nm)", "Match"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
@@ -218,14 +230,25 @@ class StellarAnalysisPage(QWidget):
 
     def _generate_synthetic(self):
         grid = build_wavelength_grid(380.0, 700.0, 8000)
-        star = generate_synthetic_stellar_spectrum(
+        # Generate a combined spectrum so each selectable element has lines to test.
+        # The H control is a relative demo input, not an abundance measurement.
+        composition = generate_composition_spectrum(
             grid,
+            abundances={"H": float(self.strength_slider.value()), "He": 25, "Na": 2, "Ca": 1, "Fe": 2},
+            temperature_k=float(self.temp_slider.value()),
+            radial_velocity_kms=float(self.vel_slider.value()),
+            noise_level=self.noise_slider.value() / 1000.0,
+            random_seed=7,
+        )
+        star = StellarSpectrum(
+            wavelength_nm=composition.wavelength_nm,
+            intensity=composition.intensity,
+            continuum=composition.continuum,
             temperature_k=float(self.temp_slider.value()),
             radial_velocity_kms=float(self.vel_slider.value()),
             noise_level=self.noise_slider.value() / 1000.0,
             h_line_strength=self.strength_slider.value() / 100.0,
-            series="Balmer",
-            n_i_max=6,
+            series_used="Balmer + reference elements",
         )
         self.current_star = star
         self.current_star_label = f"Synthetic Star (T={star.temperature_k:.0f} K)"
@@ -297,12 +320,14 @@ class StellarAnalysisPage(QWidget):
     def _finish_analysis(self):
         star = self.current_star
         continuum_for_matching = star.continuum if not _all_nan(star.continuum) else 1.0
-        summary = match_hydrogen_lines(
-            star.wavelength_nm, star.intensity, continuum_level=continuum_for_matching,
+        symbol = self.element_combo.currentData()
+        summary = match_element_lines(
+            star.wavelength_nm, star.intensity, symbol,
+            continuum_level=continuum_for_matching,
         )
         self.current_summary = summary
         self.analyze_btn.setEnabled(True)
-        self.pipeline_status.setText("Analysis complete.")
+        self.pipeline_status.setText(f"Analysis complete · {self.element_combo.currentText()}")
 
         plot_stellar_analysis(self.canvas.fig, self.canvas.ax, star, summary)
         self.canvas.redraw()
@@ -333,7 +358,7 @@ class StellarAnalysisPage(QWidget):
         self.verdict_label.setText(summary.message)
 
     def _reset_verdict(self):
-        self.verdict_label.setText("Spectrum ready. Click 'Run Hydrogen Detection' to analyze it.")
+        self.verdict_label.setText("Spectrum ready. Select an element and click 'Run Element Detection'.")
         self.verdict_label.setStyleSheet(
             "font-size: 15px; font-weight: 700; padding: 10px; border-radius: 8px; "
             "background-color: #131a2b; color: #97a3ba;"
