@@ -171,8 +171,8 @@ def export_detection_results_csv(path: str | Path, results) -> None:
             writer.writerow(
                 [
                     r.label,
-                    r.n_initial,
-                    r.n_final,
+                    r.n_initial if r.n_initial > 0 else "",
+                    r.n_final if r.n_final > 0 else "",
                     f"{r.expected_air_nm:.4f}",
                     f"{r.observed_nm:.4f}" if r.observed_nm is not None else "",
                     f"{r.difference_nm:+.4f}" if r.difference_nm is not None else "",

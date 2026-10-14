@@ -6,8 +6,8 @@
 - Adjustable relative-abundance weights, normalized to 100% in the output.
 - Synthetic absorption spectrum and input-composition bar chart.
 - Noise control, element line summaries and CSV export.
-- Three deterministic Mystery Star presets. Abundances, detection status, line counts and depth values stay hidden until the solution is revealed; mystery CSV exports also mask those values.
-- Backend and GUI regression tests for zero-abundance behavior, deterministic generation, mystery masking and export masking.
+- Clear, color-coded detection status for detected element patterns; abundance values are explicitly labeled as synthetic simulation inputs.
+- Backend and GUI regression tests for zero-abundance behavior, deterministic generation, detection-status display and CSV export.
 
 ## Scientific scope
 

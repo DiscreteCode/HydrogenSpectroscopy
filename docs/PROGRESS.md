@@ -98,9 +98,9 @@ runner, which is the project's authoritative Windows build path).
       wavelengths.
 - [x] Added `app/ui/composition_page.py`: adjustable relative-abundance weights,
       noise control, spectral plot, normalized-composition bar chart, line-count/mean-depth
-      summary, mystery-star challenge with hidden solution, and CSV export.
-- [x] Fixed a challenge-answer leak: abundance bars remain hidden until the solution
-      is revealed, just like the abundance values in the table.
+      summary, clear color-coded detection status, and CSV export.
+- [x] Removed the mystery-star challenge in favor of a practical detection-status
+      indicator that reports detected element patterns at a glance.
 - [x] Fixed a modeling bug where zero-abundance elements could still create
       synthetic lines; detection now uses continuum-normalized core flux to
       reduce false matches from neighboring lines.
@@ -110,7 +110,7 @@ runner, which is the project's authoritative Windows build path).
 - [x] Updated the navigation count and documentation to distinguish calculated
       hydrogen transitions from reference-only lines for other elements.
 - [x] 173 non-GUI tests pass; Python syntax compilation passes.
-- [x] Added GUI regression tests for the composition chart and mystery-answer masking.
+- [x] Added GUI regression tests for composition charts, detection status, and CSV export.
 - [ ] Full GUI suite and Windows executable still need to run on a Windows or
       PySide6-capable environment. PySide6 installation was unavailable in
       the current offline environment, so no GUI/build success is claimed.
@@ -119,3 +119,12 @@ runner, which is the project's authoritative Windows build path).
 app does not infer real stellar abundances from observed spectra. Line strength
 is affected by temperature, ionization and atmospheric conditions, so values
 must be presented as simulated inputs, not precise astrophysical measurements.
+
+
+## Review 2 Follow-up — Element-Specific Stellar Analysis
+
+- [x] Added `spectroscopy/element_analyzer.py` for selectable element-specific line matching.
+- [x] Updated the flagship Stellar Spectrum & Analysis page to generate a combined H/He/Na/Ca/Fe demonstration spectrum and let users select which element to identify.
+- [x] Kept hydrogen matching on the existing quantum-calculated Balmer transitions; He/Na/Ca/Fe matching uses explicitly labeled reference lines.
+- [x] Added backend regression tests for positive calcium-pattern identification, negative controls, and preservation of hydrogen's quantum-calculated path.
+- [ ] Run backend and GUI tests and verify the Windows build in GitHub Actions before release.
