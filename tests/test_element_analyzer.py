@@ -1,6 +1,7 @@
 import numpy as np
 
 from spectroscopy.element_analyzer import match_element_lines
+from spectroscopy.analyzer import generate_synthetic_stellar_spectrum
 from spectroscopy.element_database import get_element
 from spectroscopy.peak_detection import find_absorption_features
 
@@ -31,8 +32,12 @@ def test_reference_element_with_no_absorption_is_not_identified():
 
 def test_hydrogen_still_uses_quantum_calculated_balmer_lines():
     grid = np.linspace(380.0, 700.0, 16001)
-    intensity = _spectrum_with_lines("Ca", grid)
-    summary = match_element_lines(grid, intensity, "H", continuum_level=1.0)
+    star = generate_synthetic_stellar_spectrum(
+        grid, temperature_k=9000, noise_level=0, h_line_strength=0.8,
+        random_seed=12,
+    )
+    summary = match_element_lines(grid, star.intensity, "H", continuum_level=star.continuum)
+    assert summary.detected
     assert summary.num_expected >= 3
     assert all("Balmer" in row.label for row in summary.results)
     assert all("[reference]" not in row.label for row in summary.results)
