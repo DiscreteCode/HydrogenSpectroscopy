@@ -119,3 +119,12 @@ runner, which is the project's authoritative Windows build path).
 app does not infer real stellar abundances from observed spectra. Line strength
 is affected by temperature, ionization and atmospheric conditions, so values
 must be presented as simulated inputs, not precise astrophysical measurements.
+
+
+## Review 2 Follow-up — Element-Specific Stellar Analysis
+
+- [x] Added `spectroscopy/element_analyzer.py` for selectable element-specific line matching.
+- [x] Updated the flagship Stellar Spectrum & Analysis page to generate a combined H/He/Na/Ca/Fe demonstration spectrum and let users select which element to identify.
+- [x] Kept hydrogen matching on the existing quantum-calculated Balmer transitions; He/Na/Ca/Fe matching uses explicitly labeled reference lines.
+- [x] Added backend regression tests for positive calcium-pattern identification, negative controls, and preservation of hydrogen's quantum-calculated path.
+- [ ] Run backend and GUI tests and verify the Windows build in GitHub Actions before release.
