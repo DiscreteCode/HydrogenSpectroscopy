@@ -39,8 +39,8 @@ The application includes the original quantum hydrogen spectroscopy workflow,
 a five-element Stellar Spectrum & Analysis workflow, and a Review 2 Stellar Composition Analyzer. Hydrogen transitions are calculated
 by the physics engine; He/Na/Ca/Fe use labeled reference lines. The
 composition page creates synthetic spectra with adjustable relative
-abundance weights, shows normalized input composition, and includes a
-mystery-star challenge. See `docs/PROGRESS.md` for development details.
+abundance weights, shows normalized input composition, and highlights detected
+line patterns with a clear status indicator. See `docs/PROGRESS.md` for development details.
 
 ## Features
 
@@ -62,8 +62,8 @@ mystery-star challenge. See `docs/PROGRESS.md` for development details.
   lookup data (not quantum-computed in this app)
 - **Stellar Composition Analyzer** -- adjustable synthetic H/He/Na/Ca/Fe
   abundance inputs, multi-element absorption spectrum, noise control,
-  mystery-star challenge, solution reveal, and CSV export. The simplified
-  line-depth model is educational and is not an astrophysical abundance solver.
+  color-coded element-detection status, composition chart, and CSV export.
+  The simplified line-depth model is educational and is not an astrophysical abundance solver.
 - **Theory / Learn** -- the underlying physics with equations, linked
   into the relevant interactive page
 - **About / References** -- project purpose, scientific scope, honest
@@ -100,7 +100,7 @@ so the full suite also runs in CI with no physical display.
 
 The current development environment does not have PySide6 installed, so
 GUI tests cannot run here. All 173 non-GUI tests pass. Two GUI regression
-tests were added for the composition page and mystery-solution masking;
+tests cover composition generation, detection-status display, and CSV export;
 the full suite and Windows build must be verified by GitHub Actions before
 release. See `docs/RELEASE_CHECKLIST.md`.
 
