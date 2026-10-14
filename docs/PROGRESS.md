@@ -101,8 +101,6 @@ runner, which is the project's authoritative Windows build path).
       summary, clear color-coded detection status, and CSV export.
 - [x] Removed the mystery-star challenge in favor of a practical detection-status
       indicator that reports detected element patterns at a glance.
-- [x] Fixed a challenge-answer leak: abundance bars remain hidden until the solution
-      is revealed, just like the abundance values in the table.
 - [x] Fixed a modeling bug where zero-abundance elements could still create
       synthetic lines; detection now uses continuum-normalized core flux to
       reduce false matches from neighboring lines.
