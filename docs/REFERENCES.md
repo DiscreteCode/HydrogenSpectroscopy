@@ -22,11 +22,15 @@ from these rather than hard-coding them.
 ## Atomic spectroscopy reference data
 
 **NIST Atomic Spectra Database (ASD)** -- the standard reference for
-measured atomic transition wavelengths, used as the point of
-comparison when validating this project's computed hydrogen Balmer
-wavelengths, and as the general spectroscopic reference underlying the
-element-identification reference line data in
-`spectroscopy/element_database.py`.
+measured atomic transition wavelengths, used to compare computed hydrogen
+Balmer wavelengths and as the reference source for the non-hydrogen line
+subset in `spectroscopy/element_database.py`. The app labels these lines as
+reference data, not as quantum calculations. The current educational subset
+includes He I 447.1/587.6/667.8 nm; Na D2/D1 near 589.0/589.6 nm; Ca II K/H
+near 393.4/396.8 nm; and a small Fe I subset near 438.4/495.8/526.9 nm.
+Rounded values are for demonstration and should not be treated as precision
+line-list data. Consult NIST ASD for species, ionization stage, and exact
+wavelength conventions when precision is required.
 
 - NIST Atomic Spectra Database: https://physics.nist.gov/PhysRefData/ASD/
 
