@@ -3,8 +3,9 @@
 > Unveiling Stellar Composition Through Quantum Simulations of Hydrogen Spectral Lines
 
 An educational desktop application (Python + PySide6) that demonstrates,
-end to end, how the quantization of a bound electron's energy leads all
-the way to identifying hydrogen in a stellar spectrum:
+from atomic transitions to identifying line patterns in stellar spectra.
+Hydrogen transitions are computed from the quantum model; helium, sodium,
+calcium and iron are matched using explicitly labeled reference wavelengths:
 
 ```
 Quantum Energy Levels
@@ -34,8 +35,8 @@ not values inferred from real stellar observations.
 
 ## Status
 
-The application includes the original hydrogen spectroscopy workflow and a
-Review 2 Stellar Composition Analyzer. Hydrogen transitions are calculated
+The application includes the original quantum hydrogen spectroscopy workflow,
+a five-element Stellar Spectrum & Analysis workflow, and a Review 2 Stellar Composition Analyzer. Hydrogen transitions are calculated
 by the physics engine; He/Na/Ca/Fe use labeled reference lines. The
 composition page creates synthetic spectra with adjustable relative
 abundance weights, shows normalized input composition, and includes a
@@ -50,11 +51,12 @@ mystery-star challenge. See `docs/PROGRESS.md` for development details.
   series (Lyman/Balmer/Paschen/Brackett/Pfund) or custom transitions,
   configurable wavelength range, resolution, line width, and
   intensity; PNG + CSV export
-- **Stellar Spectrum & Analysis** -- synthetic star generation
-  (temperature, radial velocity, noise, hydrogen line strength),
-  built-in sample spectra, CSV/TXT import, hydrogen line matching with
-  a pass/fail verdict, detection results table, CSV + TXT report
-  export, live Doppler (rest/observed wavelength) readout
+- **Stellar Spectrum & Analysis** -- synthetic combined-spectrum generation
+  (temperature, radial velocity, noise, relative hydrogen contribution),
+  built-in sample spectra, CSV/TXT import, element selector for H/He/Na/Ca/Fe,
+  element-specific line matching and a multi-line verdict, detection results
+  table, CSV + TXT report export, live Doppler readout. H uses the quantum
+  engine; other elements use reference lines and are labeled as such.
 - **Element Identification** -- hydrogen shown as live quantum-calculated;
   helium/sodium/calcium/iron shown as clearly labeled reference-only
   lookup data (not quantum-computed in this app)
@@ -162,12 +164,11 @@ actual `.exe`.
 - **Doppler shift**: classical `delta_lambda/lambda = v/c` by default
   (accurate to ~1 part in 10^6 at stellar radial velocities), with an
   exact relativistic formula also implemented
-- **Hydrogen detection**: absorption features are located with an
-  adaptive, noise-based threshold (a robust median-absolute-deviation
-  estimator, not one fixed number for every spectrum), then matched
-  against expected Balmer wavelengths by taking the *deepest* candidate
-  within a search window -- not merely the nearest -- so a shallow
-  noise wiggle can't be mistaken for a real, Doppler-shifted line
+- **Element line identification**: hydrogen absorption features are matched
+  against Balmer wavelengths computed by the quantum engine. He/Na/Ca/Fe
+  are matched against the selected element's labeled reference-line subset;
+  a multi-line pattern is required for a positive verdict. This is a teaching
+  heuristic, not a statistical significance test or abundance measurement.
 
 ### Vacuum vs. air wavelengths
 
@@ -202,8 +203,8 @@ demonstration**, not a research-grade astronomical instrument:
 - Line intensities use a simple illustrative falloff, not computed
   Einstein A-coefficients / oscillator strengths
 - Only hydrogen is quantum-mechanically computed; helium, sodium,
-  calcium, and iron in Element Identification are clearly labeled
-  reference lookup data, not derived from this app's physics engine
+  calcium, and iron are identified with clearly labeled NIST-backed reference
+  lookup wavelengths, not derived from this app's physics engine
 - Noise can measurably affect the inferred radial velocity of a
   matched line (this is realistic -- so does it for real
   spectroscopists -- but it means single-line velocity readouts should
