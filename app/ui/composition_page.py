@@ -171,7 +171,8 @@ class CompositionPage(QWidget):
         else:
             self.status.setText(
                 "DETECTION STATUS · No clear element patterns detected above the noise threshold.\n"
-                "Try reducing noise or adjusting the simulated element weights."
+                "Try reducing noise or adjusting the simulated element weights. "
+                "Abundances are normalized simulation inputs, not measured stellar abundances."
             )
             self.status.setStyleSheet(
                 'padding: 10px; border-radius: 8px; background-color: #332c12; '
