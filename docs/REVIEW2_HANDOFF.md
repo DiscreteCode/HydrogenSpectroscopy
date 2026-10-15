@@ -1,24 +1,32 @@
 # Review 2 Handoff
 
-## Added
+## Added / changed
 
-- Stellar Composition Analyzer for H, He, Na, Ca and Fe.
-- Adjustable relative-abundance weights, normalized to 100% in the output.
-- Synthetic absorption spectrum and input-composition bar chart.
-- Noise control, element line summaries and CSV export.
-- Three deterministic Mystery Star presets. Abundances, detection status, line counts and depth values stay hidden until the solution is revealed; mystery CSV exports also mask those values.
-- Backend and GUI regression tests for zero-abundance behavior, deterministic generation, mystery masking and export masking.
+- **Reference data**: `spectroscopy/element_database.py` now holds NIST Handbook air wavelengths (4 decimals where tabulated) with a citation per line; more lines per element (He 6, Na 2, Ca 3, Fe 6). Hydrogen is still computed by the quantum engine.
+- **Simulation** (`spectroscopy/composition.py`): adjustable abundances, noise, line width, radial velocity; per-element transmission (so each element's contribution can be shown); toy line-depth model now saturates smoothly (`tanh`) so it stays invertible.
+- **Blind analysis** (`spectroscopy/composition_analysis.py`, new): sees only wavelength + intensity. Continuum estimate, blind radial-velocity scan, joint line fit with uncertainties, significance-based detection, peak-to-reference matching with blend flags, per-element inferred relative abundance, CSV writer.
+- **GUI** (`app/ui/composition_page.py`): live-updating controls (debounced), spectrum + per-element absorption panel with labelled axes/units, Summary / Detected lines / Abundances (input vs inferred) / Limitations tabs, presets, exact-entry spin boxes (clamped), KPI strip, CSV export. The Mystery Star challenge was removed at the author's request.
+- **Packaging**: `main.py --smoke-test <file>` headless self-test; workflow smoke-tests the built exe and a re-extracted copy, uploads the full onedir folder (standard ZIP, no password); spec adds scipy.optimize/ndimage/linalg; requirements trimmed (unused pyqtgraph, Pillow removed; PySide6 pin widened to <6.9).
+- **Docs**: README (method, equations, data table, limitations, build/run), `docs/REFERENCES.md` (NIST Handbook tables).
 
-## Scientific scope
+## Scientific scope (honest limits)
 
-Hydrogen transitions are calculated by the existing hydrogen quantum engine. He, Na, Ca and Fe use a small labeled reference-line subset. Abundance weights control a simplified synthetic spectrum; they are not measured from observed spectra and should not be described as precise stellar concentrations. Real line strengths depend on temperature, ionization, atmospheric conditions, line blending and radiative transfer.
+"Simulated input" abundances and "inferred" abundances are separate everywhere (table, charts, CSV). The inference inverts this app's own toy model, so agreement validates the fitting pipeline, not real-star abundance measurement. No stellar-atmosphere physics is claimed. The NIST values were transcribed from the web tables in this session (the NIST ASD query endpoint was unreachable); re-check against the live ASD if exactness matters.
 
-## Verification performed in this environment
+## Verification performed (Linux sandbox, Python 3.13, PySide6 6.8.3, Qt offscreen)
 
-- `python -m py_compile` across project Python files: passed.
-- `python -m pytest -q --ignore=tests/test_gui.py`: **173 passed**.
-- Full GUI suite and Windows executable build: **not verified here** because PySide6 is unavailable and package installation/network access failed. Run the existing `.github/workflows/windows-build.yml` on GitHub before presenting the updated GUI as fully tested.
+- Baseline before changes: 207 passed (including all GUI tests).
+- After changes: `python -m pytest -q` -> **239 passed** (207 original + 25 analysis/CSV tests in `tests/test_composition_analysis.py` + 7 new GUI tests incl. the headless smoke test).
+- Blind-recovery checks (in the tests): RV within 5 km/s for -250..+300 km/s; abundances within ~2.5 points (default star) / 4 points (strong-line compositions); absent elements not detected over 5 noise seeds.
+- Linux PyInstaller onedir build from the same spec + `--smoke-test` on the frozen binary: passed (resources found, 8 pages opened, analysis + CSV OK).
+- GUI screenshots rendered offscreen and inspected (summary and abundance tabs).
 
-## Windows build
+## NOT verified here
 
-On Windows, run `build.bat` from the project root. Or push the source to GitHub and run the `Windows Build` workflow. Download the `HydrogenSpectroscopy-Windows` artifact and extract the complete folder; run `HydrogenSpectroscopy.exe` from inside it. Do not distribute the EXE alone because this is an onedir PyInstaller build.
+- **The Windows .exe was not built or run** (PyInstaller cannot cross-compile). The Windows workflow is unrun until pushed; it has only been YAML-parsed. First run on GitHub is the real check.
+- Not run on Python 3.11 (the CI version) or with the exact pinned older PySide6/pytest versions.
+- Behaviour on a real Windows display (DPI scaling, SmartScreen) is untested.
+
+## Windows build / run
+
+Push, open the **Windows Build** workflow run, download artifact `HydrogenSpectroscopy-Windows` (standard ZIP, no password), extract all, run `HydrogenSpectroscopy/HydrogenSpectroscopy.exe`. Or run `build.bat` on Windows.

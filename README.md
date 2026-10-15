@@ -34,12 +34,17 @@ not values inferred from real stellar observations.
 
 ## Status
 
-The application includes the original hydrogen spectroscopy workflow and a
-Review 2 Stellar Composition Analyzer. Hydrogen transitions are calculated
-by the physics engine; He/Na/Ca/Fe use labeled reference lines. The
-composition page creates synthetic spectra with adjustable relative
-abundance weights, shows normalized input composition, and includes a
-mystery-star challenge. See `docs/PROGRESS.md` for development details.
+The application includes the original hydrogen spectroscopy workflow and the
+Review 2 **Stellar Composition Analyzer**. Hydrogen transitions are calculated
+by the quantum physics engine; He/Na/Ca/Fe use labeled NIST reference lines.
+The composition page simulates a multi-element spectrum (adjustable relative
+abundances, noise, line width, radial velocity; live updates), then analyzes
+the resulting intensity *blindly*: continuum estimate, line detection, Doppler
+estimate, line-to-element matching, and an **inferred** relative-abundance
+chart shown next to the **simulated input** abundances. Inferred values come
+from a demo model and are not measurements of real stars (see *Composition
+analysis* and *Limitations* below). See `docs/PROGRESS.md` and
+`docs/REVIEW2_HANDOFF.md` for details.
 
 ## Features
 
@@ -58,10 +63,13 @@ mystery-star challenge. See `docs/PROGRESS.md` for development details.
 - **Element Identification** -- hydrogen shown as live quantum-calculated;
   helium/sodium/calcium/iron shown as clearly labeled reference-only
   lookup data (not quantum-computed in this app)
-- **Stellar Composition Analyzer** -- adjustable synthetic H/He/Na/Ca/Fe
-  abundance inputs, multi-element absorption spectrum, noise control,
-  mystery-star challenge, solution reveal, and CSV export. The simplified
-  line-depth model is educational and is not an astrophysical abundance solver.
+- **Stellar Composition Analyzer** -- H/He/Na/Ca/Fe simulated spectrum
+  with adjustable abundances, noise, line width and radial velocity (live
+  updates); per-element absorption contributions; blind analysis (detected
+  vs reference wavelength, element, line info, fitted depth, significance,
+  blend flags); simulated-**input** vs **inferred** abundance chart; demo
+  presets; CSV export (summary, line table, full spectrum); in-app
+  limitations tab. Not an astrophysical abundance solver.
 - **Theory / Learn** -- the underlying physics with equations, linked
   into the relevant interactive page
 - **About / References** -- project purpose, scientific scope, honest
@@ -96,11 +104,8 @@ tree headlessly via Qt's offscreen platform plugin
 (`QT_QPA_PLATFORM=offscreen`, set automatically by the test module),
 so the full suite also runs in CI with no physical display.
 
-The current development environment does not have PySide6 installed, so
-GUI tests cannot run here. All 173 non-GUI tests pass. Two GUI regression
-tests were added for the composition page and mystery-solution masking;
-the full suite and Windows build must be verified by GitHub Actions before
-release. See `docs/RELEASE_CHECKLIST.md`.
+Verified status of this revision: see *Verification* in
+`docs/REVIEW2_HANDOFF.md` (exact tests run, and what could not be run here).
 
 ## Windows executable
 
@@ -138,14 +143,68 @@ build, not onefile; see the spec file's docstring for why).
 
 ### Via GitHub Actions (no Windows machine needed)
 
-`.github/workflows/windows-build.yml` runs on `windows-latest`,
-installs dependencies, runs the full test suite, builds with
-PyInstaller, and uploads the result as a workflow artifact named
-**`HydrogenSpectroscopy-Windows`**. This is the authoritative Windows
-build/verification path for this project, since PyInstaller cannot
-cross-compile a Windows executable from Linux or macOS -- if you're
-developing on a non-Windows machine, let CI produce and verify the
-actual `.exe`.
+`.github/workflows/Windows-Build.yml` runs on `windows-latest`: installs
+dependencies, runs the full test suite (offscreen Qt), builds with PyInstaller,
+**smoke-tests the built exe** (`HydrogenSpectroscopy.exe --smoke-test result.txt`
+opens every page, runs the composition simulation + analysis and CSV export,
+and exits 0 on success), then zips and re-extracts the package and smoke-tests
+the extracted copy before uploading it as the artifact
+**`HydrogenSpectroscopy-Windows`**.
+
+To use it: open the run on GitHub > *Artifacts* > download
+`HydrogenSpectroscopy-Windows`. GitHub delivers a standard `.zip` with **no
+password**. Extract the whole thing, open the `HydrogenSpectroscopy` folder and
+double-click `HydrogenSpectroscopy.exe`. Keep the `_internal` folder next to
+the exe. The exe is unsigned, so Windows SmartScreen may show *More info > Run
+anyway*.
+
+PyInstaller cannot cross-compile, so the Windows exe itself is only ever built
+and verified by this workflow (or `build.bat` on a Windows machine).
+
+## Composition analysis: physics, assumptions, equations
+
+**Wavelengths.** Hydrogen: Rydberg/Bohr levels, `E_n = -13.6 eV / n^2`
+(reduced-mass corrected), `lambda = hc / |E_i - E_f|` (vacuum), converted to
+standard air with the Edlen (1966) formula. He/Na/Ca/Fe are looked-up
+standard-air wavelengths. All composition-page wavelengths are standard air, nm.
+
+**Doppler shift** (classical, `v << c`): `lambda_obs = lambda_rest (1 + v/c)`;
+`v > 0` is receding (redshift).
+
+**Simulation.** `I(lambda) = B_T(lambda) * Pi_lines [1 - d_i exp(-(lambda - lambda_i)^2 / 2 sigma^2)] + noise`
+with `B_T` the normalized Planck blackbody (8500 K), Gaussian lines of common
+width `sigma`, and Gaussian noise. Line depth uses a **toy model**
+`d = D_max tanh( s_el * 0.65 * sqrt(a / a_0) / D_max )`, `D_max = 0.78`,
+`a` the input weight (normalized to 100), `a_0` a per-element reference weight
+and `s_el` a per-element strength. It is not a curve of growth.
+
+**Blind analysis** (`spectroscopy/composition_analysis.py`) uses the intensity
+only: (1) continuum = clipped polynomial in log flux, refined after the lines
+are fitted; (2) radial velocity = scan for the shift that best aligns the known
+candidate lines, then fitted; (3) joint bounded least-squares fit of one depth
+per candidate line plus shared velocity and line width; (4) a line is
+*detected* if depth >= 0.02 and depth/sigma_depth >= 5 (sigma from the fit
+covariance); (5) detected peaks are matched to reference lines (blends flagged
+when lines are within ~3 line-widths); (6) per-element depths are inverted
+through the toy model and normalized to 100 -> **inferred** abundance.
+
+**Input vs inferred.** *Simulated input* = the weights you set. *Inferred* =
+what step (6) recovers. They agree well in tests only because the analyzer
+inverts the very model that generated the data.
+
+### Reference line data
+
+| Element | Lines (nm, air) | Source |
+|---|---|---|
+| H | Balmer H-alpha..H-delta, computed | Quantum model (Rydberg) + Edlen 1966 |
+| He I | 447.1479, 492.1931, 501.5678, 587.562 (D3), 667.8152, 706.5177 | NIST Handbook, He wavelength table |
+| Na I | 588.995 (D2), 589.592 (D1) | NIST Handbook, Na table |
+| Ca II / I | 393.3661 (K), 396.8467 (H), 422.6727 (Ca I) | NIST Handbook, Ca strong-lines table |
+| Fe I | 382.04, 385.99, 388.63, 404.58, 438.35, 516.75 | NIST Handbook, Fe strong-lines table (0.01 nm) |
+
+Each `ReferenceLine` carries its citation (`spectroscopy/element_database.py`).
+Full citations: `docs/REFERENCES.md`. Lines outside 380-700 nm (He 706.5) are
+stored but not drawn in the default window.
 
 ## Scientific methodology
 
@@ -211,6 +270,12 @@ demonstration**, not a research-grade astronomical instrument:
 - Hydrogen "detection" means the observed/synthetic spectrum's features
   match hydrogen's reference wavelengths within tolerance; it is not a
   claim of elemental-abundance quantification
+- **Composition analysis:** inferred abundances are demo-model outputs (the
+  analyzer inverts the simulator's own toy line-strength model). There is no
+  radiative transfer, ionization/excitation balance, broadening physics, NLTE,
+  limb darkening or molecular lines; the continuum is a plain blackbody; line
+  lists are short subsets; uncertainties are statistical only. Never present
+  these numbers as measured stellar abundances.
 
 ## Project structure
 
@@ -231,7 +296,7 @@ tests/                      Backend and headless GUI regression tests
 docs/                      PROGRESS.md, REFERENCES.md, RELEASE_CHECKLIST.md, REVIEW2_HANDOFF.md
 HydrogenSpectroscopy.spec   PyInstaller build spec
 build.bat                   Windows developer build script
-.github/workflows/windows-build.yml   Windows CI build + test + artifact upload
+.github/workflows/Windows-Build.yml   Windows CI build + test + artifact upload
 ```
 
 The dependency direction is strict and one-way:

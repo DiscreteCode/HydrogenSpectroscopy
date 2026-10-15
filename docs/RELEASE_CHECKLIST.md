@@ -20,9 +20,9 @@ CI runner) that this checkpoint's authoring environment did not have.
       malformed file (clean message, not a traceback)
 - [ ] CSV/PNG/TXT export works from the relevant pages
 
-- [ ] Stellar Composition Analyzer: generate a spectrum, inspect normalized
-      abundance bars/table, load a mystery star, verify abundances remain hidden,
-      reveal the solution, and export CSV.
+- [ ] Stellar Composition Analyzer: move the sliders (spectrum and analysis update
+      live), try a preset, compare simulated-input vs inferred abundance bars,
+      check the Detected lines tab, and export CSV.
 
 ## Scientific
 
@@ -84,7 +84,7 @@ PyInstaller available -- see audit notes):
 
 ## CI
 
-- [ ] `.github/workflows/windows-build.yml` runs successfully on push/PR
+- [ ] `.github/workflows/Windows-Build.yml` runs successfully on push/PR
 - [ ] The `HydrogenSpectroscopy-Windows` artifact is produced and
       downloadable from the workflow run
 

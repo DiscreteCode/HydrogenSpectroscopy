@@ -2,10 +2,13 @@
 """
 Hydrogen Quantum Spectroscopy -- application entry point.
 
-Double-click target once packaged with PyInstaller (a later checkpoint);
-for now, run directly with:
+Double-click target once packaged with PyInstaller; or run directly with:
 
     python3 main.py
+
+Build verification (headless self-test, writes a verdict file):
+
+    python3 main.py --smoke-test result.txt
 
 The user never needs to touch the physics/spectroscopy code once this
 launches -- everything is driven through the GUI.
@@ -29,6 +32,10 @@ STYLE_PATH = resource_path("app", "resources", "style.qss")
 
 
 def main() -> int:
+    if len(sys.argv) >= 2 and sys.argv[1] == "--smoke-test":
+        from app.smoke_test import run
+        result = sys.argv[2] if len(sys.argv) > 2 else "smoke_test_result.txt"
+        return run(result)
     app = QApplication(sys.argv)
     app.setApplicationName("Hydrogen Quantum Spectroscopy")
     app.setOrganizationName("Physics of Semiconductor Devices Project")

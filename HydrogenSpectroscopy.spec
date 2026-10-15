@@ -14,7 +14,7 @@ Onefile trades that away purely for a single-file download, which
 isn't a priority here.
 
 Run this on Windows (see build.bat) or via the windows-latest GitHub
-Actions runner (see .github/workflows/windows-build.yml) -- PyInstaller
+Actions runner (see .github/workflows/Windows-Build.yml) -- PyInstaller
 builds platform-native executables and cannot cross-compile a Windows
 .exe from Linux/macOS.
 
@@ -66,6 +66,9 @@ datas += collect_data_files("matplotlib")
 # additions.
 hiddenimports = []
 hiddenimports += collect_submodules("scipy.signal")  # find_peaks and friends
+hiddenimports += collect_submodules("scipy.optimize")  # least_squares (composition analysis)
+hiddenimports += collect_submodules("scipy.ndimage")   # gaussian_filter1d
+hiddenimports += collect_submodules("scipy.linalg")
 hiddenimports += [
     "scipy.special.cython_special",  # common scipy hidden-import gap
     "PySide6.QtSvg",                 # Qt style/icon rendering dependency

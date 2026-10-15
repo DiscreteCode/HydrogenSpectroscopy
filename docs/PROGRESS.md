@@ -66,7 +66,7 @@ python3 main.py
       simulated-frozen mode; has no PySide6 dependency
 - [x] `HydrogenSpectroscopy.spec` -- PyInstaller onedir build spec
 - [x] `build.bat` -- Windows developer build script
-- [x] `.github/workflows/windows-build.yml` -- Windows CI: install, test,
+- [x] `.github/workflows/Windows-Build.yml` -- Windows CI: install, test,
       build, upload `HydrogenSpectroscopy-Windows` artifact
 - [x] `pyproject.toml` -- added `[project]` metadata (name, version 1.0.0,
       description, dependencies)
@@ -98,9 +98,7 @@ runner, which is the project's authoritative Windows build path).
       wavelengths.
 - [x] Added `app/ui/composition_page.py`: adjustable relative-abundance weights,
       noise control, spectral plot, normalized-composition bar chart, line-count/mean-depth
-      summary, mystery-star challenge with hidden solution, and CSV export.
-- [x] Fixed a challenge-answer leak: abundance bars remain hidden until the solution
-      is revealed, just like the abundance values in the table.
+      summary, and CSV export. (An earlier mystery-star challenge was later removed.)
 - [x] Fixed a modeling bug where zero-abundance elements could still create
       synthetic lines; detection now uses continuum-normalized core flux to
       reduce false matches from neighboring lines.
@@ -110,7 +108,7 @@ runner, which is the project's authoritative Windows build path).
 - [x] Updated the navigation count and documentation to distinguish calculated
       hydrogen transitions from reference-only lines for other elements.
 - [x] 173 non-GUI tests pass; Python syntax compilation passes.
-- [x] Added GUI regression tests for the composition chart and mystery-answer masking.
+- [x] Added GUI regression tests for the composition page.
 - [ ] Full GUI suite and Windows executable still need to run on a Windows or
       PySide6-capable environment. PySide6 installation was unavailable in
       the current offline environment, so no GUI/build success is claimed.

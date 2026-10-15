@@ -364,67 +364,93 @@ def test_composition_page_generates_five_element_summary(window):
     assert page.sliders["H"].value() == 70
 
 
-def test_mystery_star_hides_abundances_until_revealed(window):
+def test_composition_page_shows_input_and_inferred_separately(window):
     window.navigate("composition")
     page = window.stack.currentWidget()
-    page._load_mystery_star()
-    assert page._challenge_active
-    assert page.reveal_btn.isEnabled()
-    assert page.table.item(0, 1).text() == "Hidden"
-    page._reveal_solution()
-    assert not page.reveal_btn.isEnabled()
-    assert page.table.item(0, 1).text().endswith("%")
-
-# ---------------------------------------------------------------------------
-# Stellar Composition Analyzer (Review 2 feature)
-# ---------------------------------------------------------------------------
-
-
-def test_composition_page_generates_multielement_spectrum(window):
-    window.navigate("composition")
-    page = window.stack.currentWidget()
-    assert page.current is not None
-    assert page.table.rowCount() == 5
-    assert page.composition_ax.get_title() == "Input Composition"
-    assert len(page.composition_ax.patches) == 5
     assert "normalized simulation inputs" in page.status.text().lower()
+    assert page.table.item(0, 1).text() == "70.0%"                      # simulated input
+    assert page.table.item(0, 6).text().startswith(("69", "70"))        # inferred
+    assert len(page.abundance_ax.patches) == 10                         # 5 input + 5 inferred bars
+    assert "input" in page.abundance_ax.get_title().lower() and "inferred" in page.abundance_ax.get_title().lower()
+    assert page.lines_table.rowCount() >= 15
+    assert page.lines_table.horizontalHeaderItem(2).text().startswith("Reference")
+    assert page.canvas.ax.get_ylabel() and page.contrib_ax.get_xlabel().startswith("Wavelength")
+    assert "Limitations" in [page.tabs.tabText(i) for i in range(page.tabs.count())]
+    assert "km/s" in page.kpi_rv.value_label.text()
 
 
-def test_mystery_star_hides_abundances_until_revealed(window):
+def test_composition_live_update_changes_analysis_for_new_radial_velocity(window):
     window.navigate("composition")
     page = window.stack.currentWidget()
-    page._load_mystery_star()
-
-    assert page._challenge_active is True
-    assert page.reveal_btn.isEnabled()
-    assert all(page.table.item(row, 1).text() == "Hidden" for row in range(5))
-    assert all(page.table.item(row, 2).text() == "Hidden" for row in range(5))
-    assert all(page.table.item(row, 3).text() == "Hidden" for row in range(5))
-    assert all(page.table.item(row, 4).text() == "Hidden" for row in range(5))
-    assert page.composition_ax.get_title() == "Mystery Composition"
-    assert len(page.composition_ax.patches) == 0
-
-    page._reveal_solution()
-    assert page._challenge_revealed is True
-    assert page.table.item(0, 1).text() == "80.0%"
-    assert len(page.composition_ax.patches) == 5
-    assert not page.reveal_btn.isEnabled()
+    page.rv.setValue(150)
+    page._apply_live_update()
+    assert page.analysis.radial_velocity_kms == pytest.approx(150, abs=5)
+    page.sliders["Na"].setValue(0)
+    page._apply_live_update()
+    assert not page.analysis.element("Na").detected
+    assert page.table.item(2, 2).text().startswith("0 /")
 
 
-def test_mystery_csv_export_does_not_leak_solution(window, tmp_path):
+def test_composition_spin_boxes_clamp_invalid_entries_and_sync_sliders(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    page.spins["He"].setValue(5000)               # out of range -> clamped by the spin box
+    assert page.sliders["He"].value() == 100
+    page.rv_spin.setValue(-9999)
+    assert page.rv.value() == -300
+    page.noise_spin.setValue(1.5)
+    assert page.noise.value() == 15
+
+
+def test_composition_presets_and_reset(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    page.preset_combo.setCurrentIndex(page.preset_combo.findText("Helium-rich"))
+    assert page.sliders["He"].value() == 60 and page.spins["He"].value() == 60
+    page._apply_live_update()
+    assert page.table.item(1, 1).text().startswith("60")
+    page._reset()
+    assert page.sliders["H"].value() == 70 and page.rv.value() == 0
+
+
+def test_composition_all_zero_live_update_is_graceful(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    for s in page.sliders.values():
+        s.setValue(0)
+    page._apply_live_update()          # must not raise or pop a modal dialog
+    assert "at least one element" in page.status.text().lower()
+
+
+def test_composition_csv_export_contains_analysis(window, tmp_path):
     import csv
-
     window.navigate("composition")
     page = window.stack.currentWidget()
-    page._load_mystery_star()
-    export_path = tmp_path / "mystery.csv"
+    out = tmp_path / "analysis.csv"
     with patch("app.ui.composition_page.QFileDialog.getSaveFileName",
-               return_value=(str(export_path), "CSV Files (*.csv)")), \
+               return_value=(str(out), "CSV Files (*.csv)")), \
          patch.object(QMessageBox, "information", return_value=None):
         page._export_csv()
+    rows = list(csv.reader(out.open(newline="", encoding="utf-8")))
+    flat = [r[0] for r in rows if r]
+    assert "# SECTION: detected lines" in flat and "# SECTION: spectrum" in flat
+    hydrogen = next(r for r in rows if r and r[0] == "Hydrogen")
+    assert hydrogen[1] == "70.000" and hydrogen[5] == "DETECTED"
 
-    with export_path.open(newline="", encoding="utf-8") as handle:
-        rows = list(csv.reader(handle))
-    element_rows = [row for row in rows if row and row[0] in {"Hydrogen", "Helium", "Sodium", "Calcium", "Iron"}]
-    assert len(element_rows) == 5
-    assert all(row[1:6] == ["Hidden"] * 5 for row in element_rows)
+
+def test_composition_csv_export_failure_is_reported_not_raised(window, tmp_path):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    bad = tmp_path / "missing_dir" / "x.csv"
+    with patch("app.ui.composition_page.QFileDialog.getSaveFileName",
+               return_value=(str(bad), "CSV Files (*.csv)")), \
+         patch.object(QMessageBox, "warning") as warn:
+        page._export_csv()
+    assert warn.called
+
+
+def test_headless_smoke_test_passes(tmp_path):
+    from app.smoke_test import run
+    out = tmp_path / "smoke.txt"
+    assert run(str(out)) == 0
+    assert "SMOKE TEST PASSED" in out.read_text(encoding="utf-8")
