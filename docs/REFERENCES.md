@@ -30,6 +30,28 @@ element-identification reference line data in
 
 - NIST Atomic Spectra Database: https://physics.nist.gov/PhysRefData/ASD/
 
+**NIST Handbook of Basic Atomic Spectroscopic Data** (W. C. Martin and
+W. L. Wiese; online edition, NIST Physical Measurement Laboratory) -- the
+source of the He, Na, Ca and Fe air wavelengths stored in
+`spectroscopy/element_database.py` (each `ReferenceLine.citation`). Tables read:
+
+- Helium: https://physics.nist.gov/PhysRefData/Handbook/Tables/heliumtable2.htm
+  (He I 447.1479, 492.1931, 501.5678, 587.562 [fine-structure blend
+  587.5615/587.5640/587.5966], 667.8152, 706.5177 nm)
+- Sodium: https://physics.nist.gov/PhysRefData/Handbook/Tables/sodiumtable2.htm
+  (Na I 588.995 and 589.592 nm)
+- Calcium: https://physics.nist.gov/PhysRefData/Handbook/Tables/calciumtable2.htm
+  (Ca II 3933.6614 A and 3968.4673 A; Ca I 4226.727 A)
+- Iron: https://physics.nist.gov/PhysRefData/Handbook/Tables/irontable2.htm
+  (Fe I strong lines 382.04, 385.99, 388.63, 404.58, 438.35, 516.75 nm,
+  tabulated at 0.01 nm precision here)
+
+Wavelengths are standard-air values as tabulated. The Handbook's relative
+intensities are source-specific and are used only as labels, not as physical
+line strengths. These lines were transcribed from the web tables on the
+project date; re-check against the live NIST ASD before any use beyond this
+educational application.
+
 ## Vacuum-to-air wavelength conversion
 
 **B. Edlén, "The Refractive Index of Air", Metrologia, 2, 71 (1966).**

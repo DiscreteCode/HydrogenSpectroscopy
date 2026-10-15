@@ -84,7 +84,7 @@ PyInstaller available -- see audit notes):
 
 ## CI
 
-- [ ] `.github/workflows/windows-build.yml` runs successfully on push/PR
+- [ ] `.github/workflows/Windows-Build.yml` runs successfully on push/PR
 - [ ] The `HydrogenSpectroscopy-Windows` artifact is produced and
       downloadable from the workflow run
 

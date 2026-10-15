@@ -428,3 +428,86 @@ def test_mystery_csv_export_does_not_leak_solution(window, tmp_path):
     element_rows = [row for row in rows if row and row[0] in {"Hydrogen", "Helium", "Sodium", "Calcium", "Iron"}]
     assert len(element_rows) == 5
     assert all(row[1:6] == ["Hidden"] * 5 for row in element_rows)
+
+
+# ---------------------------------------------------------------------------
+# Review 2: blind analysis, live updates, CSV export
+# ---------------------------------------------------------------------------
+
+
+def test_composition_page_shows_input_and_inferred_separately(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    assert page.table.item(0, 1).text() == "70.0%"            # simulated input
+    assert page.table.item(0, 6).text().startswith("69") or page.table.item(0, 6).text().startswith("70")
+    assert len(page.inferred_ax.patches) == 5
+    assert "inferred" in page.inferred_ax.get_title().lower()
+    assert page.lines_table.rowCount() >= 15
+    assert page.lines_table.horizontalHeaderItem(2).text().startswith("Reference")
+    assert page.canvas.ax.get_ylabel() and page.contrib_ax.get_xlabel().startswith("Wavelength")
+    assert "Limitations" in [page.tabs.tabText(i) for i in range(page.tabs.count())]
+
+
+def test_composition_live_update_changes_analysis_for_new_radial_velocity(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    page.rv.setValue(150)
+    page._apply_live_update()
+    assert page.analysis.radial_velocity_kms == pytest.approx(150, abs=5)
+    page.sliders["Na"].setValue(0)
+    page._apply_live_update()
+    assert not page.analysis.element("Na").detected
+    assert page.table.item(2, 2).text().startswith("0 /")
+
+
+def test_composition_all_zero_live_update_is_graceful(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    for s in page.sliders.values():
+        s.setValue(0)
+    page._apply_live_update()          # must not raise or pop a modal dialog
+    assert "at least one element" in page.status.text().lower()
+
+
+def test_composition_csv_export_contains_analysis(window, tmp_path):
+    import csv
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    out = tmp_path / "analysis.csv"
+    with patch("app.ui.composition_page.QFileDialog.getSaveFileName",
+               return_value=(str(out), "CSV Files (*.csv)")), \
+         patch.object(QMessageBox, "information", return_value=None):
+        page._export_csv()
+    rows = list(csv.reader(out.open(newline="", encoding="utf-8")))
+    flat = [r[0] for r in rows if r]
+    assert "# SECTION: detected lines" in flat and "# SECTION: spectrum" in flat
+    hydrogen = next(r for r in rows if r and r[0] == "Hydrogen")
+    assert hydrogen[1] == "70.000" and hydrogen[5] == "DETECTED"
+
+
+def test_composition_csv_export_failure_is_reported_not_raised(window, tmp_path):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    bad = tmp_path / "missing_dir" / "x.csv"
+    with patch("app.ui.composition_page.QFileDialog.getSaveFileName",
+               return_value=(str(bad), "CSV Files (*.csv)")), \
+         patch.object(QMessageBox, "warning") as warn:
+        page._export_csv()
+    assert warn.called
+
+
+def test_mystery_star_inferred_chart_hidden_until_reveal(window):
+    window.navigate("composition")
+    page = window.stack.currentWidget()
+    page._load_mystery_star()
+    assert len(page.inferred_ax.patches) == 0
+    assert all(not s.isEnabled() for s in page.sliders.values())
+    page._reveal_solution()
+    assert len(page.inferred_ax.patches) == 5
+
+
+def test_headless_smoke_test_passes(tmp_path):
+    from app.smoke_test import run
+    out = tmp_path / "smoke.txt"
+    assert run(str(out)) == 0
+    assert "SMOKE TEST PASSED" in out.read_text(encoding="utf-8")

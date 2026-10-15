@@ -66,7 +66,7 @@ python3 main.py
       simulated-frozen mode; has no PySide6 dependency
 - [x] `HydrogenSpectroscopy.spec` -- PyInstaller onedir build spec
 - [x] `build.bat` -- Windows developer build script
-- [x] `.github/workflows/windows-build.yml` -- Windows CI: install, test,
+- [x] `.github/workflows/Windows-Build.yml` -- Windows CI: install, test,
       build, upload `HydrogenSpectroscopy-Windows` artifact
 - [x] `pyproject.toml` -- added `[project]` metadata (name, version 1.0.0,
       description, dependencies)

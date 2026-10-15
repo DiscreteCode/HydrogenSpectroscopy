@@ -142,5 +142,5 @@ class ElementIdentificationPage(QWidget):
         for row, line in enumerate(lines):
             self.table.setItem(row, 0, QTableWidgetItem(line.label))
             self.table.setItem(row, 1, QTableWidgetItem("—"))
-            self.table.setItem(row, 2, QTableWidgetItem(f"{line.wavelength_air_nm:.1f}"))
+            self.table.setItem(row, 2, QTableWidgetItem(f"{line.wavelength_air_nm:.3f}"))
             self.table.setItem(row, 3, QTableWidgetItem("Reference database"))

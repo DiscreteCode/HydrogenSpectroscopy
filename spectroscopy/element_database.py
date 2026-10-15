@@ -10,9 +10,14 @@ laboratory air wavelengths -- included only so the data model and
 matching pipeline are demonstrably extensible, and explicitly NOT
 derived from a quantum calculation in this app.
 
-Do not add more "reference" elements without also adding a clear
-citation; do not ever silently blend a reference-database line with a
-computed hydrogen line in the UI without labeling which is which.
+Every reference line carries the citation of the table it was taken
+from. Do not add reference lines without a citation; do not ever
+silently blend a reference-database line with a computed hydrogen line
+in the UI without labeling which is which.
+
+Wavelengths are standard-AIR wavelengths in nm (the convention used by
+the NIST Handbook of Basic Atomic Spectroscopic Data tables below),
+matching the air wavelengths used for the computed hydrogen lines.
 """
 
 from __future__ import annotations
@@ -26,10 +31,23 @@ class LineSource(str, Enum):
     REFERENCE_DATABASE = "reference_database"    # looked up, not computed here
 
 
+NIST_HANDBOOK = (
+    "NIST Handbook of Basic Atomic Spectroscopic Data, "
+    "https://physics.nist.gov/PhysRefData/Handbook/ (wavelength tables, "
+    "air wavelengths, converted from Angstrom where tabulated in A)"
+)
+
+
 @dataclass(frozen=True)
 class ReferenceLine:
+    """One reference-database line (standard-air wavelength, nm)."""
+
     wavelength_air_nm: float
     label: str
+    citation: str = NIST_HANDBOOK
+    # Relative intensity as tabulated by the source (arbitrary units,
+    # comparable only within one element/ion table). None if not used.
+    tabulated_intensity: float | None = None
 
 
 @dataclass(frozen=True)
@@ -53,22 +71,25 @@ HYDROGEN = ElementEntry(
     "E_n = -13.6 eV/n^2, never looked up.",
 )
 
-# The following are standard, extremely well-established laboratory air
-# wavelengths (the kind found in any spectroscopy reference table),
-# included ONLY to demonstrate that the element database / line-matching
-# architecture generalizes beyond hydrogen. They are NOT computed by
-# this application's physics engine and should never be presented to a
-# user as "calculated".
+# Reference (looked-up, NOT computed) lines. Values: NIST Handbook of
+# Basic Atomic Spectroscopic Data, wavelength tables (He I: 4 decimals
+# where tabulated; Na I, Ca II/I: 3-4 decimals; Fe I: 0.01 nm precision
+# as tabulated in the strong-lines table).
 HELIUM = ElementEntry(
     symbol="He",
     name="Helium",
     source=LineSource.REFERENCE_DATABASE,
     reference_lines=(
-        ReferenceLine(587.6, "He I D3"),
-        ReferenceLine(667.8, "He I"),
-        ReferenceLine(447.1, "He I"),
+        ReferenceLine(447.1479, "He I 447.1", tabulated_intensity=200),
+        ReferenceLine(492.1931, "He I 492.2", tabulated_intensity=20),
+        ReferenceLine(501.5678, "He I 501.6", tabulated_intensity=100),
+        ReferenceLine(587.562, "He I D3", tabulated_intensity=500),
+        ReferenceLine(667.8152, "He I 667.8", tabulated_intensity=200),
+        ReferenceLine(706.5177, "He I 706.5", tabulated_intensity=100),
     ),
-    note="Reference lines only; not quantum-calculated in this app.",
+    note="Reference lines only; not quantum-calculated in this app. "
+    "He I D3 is the 587.56 nm fine-structure blend (components at "
+    "587.5615/587.5640/587.5966 nm).",
 )
 
 SODIUM = ElementEntry(
@@ -76,8 +97,8 @@ SODIUM = ElementEntry(
     name="Sodium",
     source=LineSource.REFERENCE_DATABASE,
     reference_lines=(
-        ReferenceLine(589.0, "Na D2"),
-        ReferenceLine(589.6, "Na D1"),
+        ReferenceLine(588.995, "Na I D2", tabulated_intensity=1000),
+        ReferenceLine(589.592, "Na I D1", tabulated_intensity=500),
     ),
     note="Reference lines only; not quantum-calculated in this app.",
 )
@@ -87,8 +108,9 @@ CALCIUM = ElementEntry(
     name="Calcium",
     source=LineSource.REFERENCE_DATABASE,
     reference_lines=(
-        ReferenceLine(393.4, "Ca II K"),
-        ReferenceLine(396.8, "Ca II H"),
+        ReferenceLine(393.3661, "Ca II K", tabulated_intensity=1000),
+        ReferenceLine(396.8467, "Ca II H", tabulated_intensity=1000),
+        ReferenceLine(422.6727, "Ca I 422.7", tabulated_intensity=1000),
     ),
     note="Reference lines only; not quantum-calculated in this app. "
     "The Ca II H&K lines are prominent in stellar spectra.",
@@ -99,12 +121,16 @@ IRON = ElementEntry(
     name="Iron",
     source=LineSource.REFERENCE_DATABASE,
     reference_lines=(
-        ReferenceLine(438.4, "Fe I"),
-        ReferenceLine(526.9, "Fe I"),
-        ReferenceLine(495.8, "Fe I"),
+        ReferenceLine(382.04, "Fe I 382.0", tabulated_intensity=500),
+        ReferenceLine(385.99, "Fe I 386.0", tabulated_intensity=500),
+        ReferenceLine(388.63, "Fe I 388.6", tabulated_intensity=300),
+        ReferenceLine(404.58, "Fe I 404.6", tabulated_intensity=300),
+        ReferenceLine(438.35, "Fe I 438.4", tabulated_intensity=200),
+        ReferenceLine(516.75, "Fe I 516.8", tabulated_intensity=250),
     ),
-    note="Reference lines only (illustrative subset); not quantum-calculated "
-    "in this app. Iron's real spectrum has thousands of lines.",
+    note="Reference lines only (illustrative subset of the strongest "
+    "tabulated Fe I lines); not quantum-calculated in this app. Iron's "
+    "real spectrum has thousands of lines.",
 )
 
 ELEMENT_DATABASE: dict[str, ElementEntry] = {
