@@ -322,28 +322,22 @@ def compare_input_and_inferred(analysis: CompositionAnalysis, input_percent: dic
     return rows
 
 
-def write_analysis_csv(handle, spectrum, analysis: CompositionAnalysis, *,
-                       hide_solution: bool = False) -> None:
+def write_analysis_csv(handle, spectrum, analysis: CompositionAnalysis) -> None:
     """Write spectrum + analysis to an open text handle (``newline=''``).
 
     Sections: element summary, detected-line table, spectral data. SIMULATED
     INPUT abundances and INFERRED abundances are always separate columns.
-    With ``hide_solution`` (unrevealed Mystery Star) every value that would
-    reveal the hidden input, or the analysis built on it, is written as
-    'Hidden' and the per-element truth columns are omitted.
     """
     import csv
     w = csv.writer(handle)
-    hid = 'Hidden'
     w.writerow(['# Hydrogen Quantum Spectroscopy - synthetic stellar composition analysis'])
     w.writerow(['# SIMULATED INPUT abundances are the weights chosen for the simulation (demo units, normalized to 100).'])
     w.writerow(['# INFERRED abundances come from blind line fitting of the intensity through the SAME toy model;'])
     w.writerow(['# they are not measurements, and not real stellar abundances.'])
     w.writerow(['# Wavelengths: standard-air nm. Intensity: normalized to the blackbody peak (dimensionless).'])
-    if not hide_solution:
-        w.writerow(['# Simulation parameters', f'noise_sigma={spectrum.noise_level}',
-                    f'line_sigma_nm={spectrum.line_sigma_nm}', f'radial_velocity_kms={spectrum.radial_velocity_kms}',
-                    f'temperature_k={spectrum.temperature_k}'])
+    w.writerow(['# Simulation parameters', f'noise_sigma={spectrum.noise_level}',
+                f'line_sigma_nm={spectrum.line_sigma_nm}', f'radial_velocity_kms={spectrum.radial_velocity_kms}',
+                f'temperature_k={spectrum.temperature_k}'])
     w.writerow(['# Estimated by analysis', f'radial_velocity_kms={analysis.radial_velocity_kms:.3f}',
                 f'radial_velocity_sigma_kms={analysis.radial_velocity_sigma_kms:.3f}',
                 f'line_sigma_nm={analysis.line_sigma_nm:.4f}', f'noise_rms={analysis.noise_sigma:.5f}'])
@@ -353,14 +347,11 @@ def write_analysis_csv(handle, spectrum, analysis: CompositionAnalysis, *,
                 'Mean fitted depth (%)', 'Status', 'Inferred (%)', 'Inferred 1-sigma statistical (%)',
                 'Inferred minus input (%)', 'Line source'])
     for e in analysis.elements:
-        if hide_solution:
-            w.writerow([e.name] + [hid] * 8 + [e.source])
-        else:
-            inp = spectrum.abundances.get(e.symbol, 0.0)
-            w.writerow([e.name, f'{inp:.3f}', e.lines_detected, e.lines_checked,
-                        f'{100 * e.mean_depth:.3f}', 'DETECTED' if e.detected else 'NOT DETECTED',
-                        f'{e.inferred_percent:.3f}', f'{e.inferred_sigma_percent:.3f}',
-                        f'{e.inferred_percent - inp:.3f}', e.source])
+        inp = spectrum.abundances.get(e.symbol, 0.0)
+        w.writerow([e.name, f'{inp:.3f}', e.lines_detected, e.lines_checked,
+                    f'{100 * e.mean_depth:.3f}', 'DETECTED' if e.detected else 'NOT DETECTED',
+                    f'{e.inferred_percent:.3f}', f'{e.inferred_sigma_percent:.3f}',
+                    f'{e.inferred_percent - inp:.3f}', e.source])
     w.writerow([])
     w.writerow(['# SECTION: detected lines'])
     w.writerow(['Symbol', 'Line', 'Reference wavelength (nm, air)', 'Expected observed wavelength (nm)',
@@ -379,7 +370,7 @@ def write_analysis_csv(handle, spectrum, analysis: CompositionAnalysis, *,
     cols = ['Wavelength (nm)', 'Observed intensity', 'Estimated continuum',
             'Normalized flux', 'Fitted model (normalized)']
     contrib = None
-    if not hide_solution and spectrum.element_transmission:
+    if spectrum.element_transmission:
         contrib = [(s, spectrum.element_transmission[s]) for s in ELEMENT_ORDER
                    if s in spectrum.element_transmission]
         cols += [f'{s} absorption (simulated truth, 1 - transmission)' for s, _ in contrib]

@@ -68,7 +68,7 @@ def test_absent_elements_not_detected_with_noise():
         assert an.element('H').detected and an.element('He').detected
 
 
-def test_inferred_abundances_normalize_and_track_input_on_mystery_presets():
+def test_inferred_abundances_normalize_and_track_input_on_strong_line_presets():
     presets = [{'H': 55, 'He': 30, 'Na': 0, 'Ca': 5, 'Fe': 10},
                {'H': 45, 'He': 25, 'Na': 15, 'Ca': 10, 'Fe': 5}]
     for k, ab in enumerate(presets):
@@ -156,15 +156,15 @@ def test_per_element_transmission_reconstructs_noiseless_spectrum():
     np.testing.assert_allclose(prod, sp.intensity, atol=1e-12)
 
 
-def _csv(sp, an, hide):
+def _csv(sp, an):
     buf = io.StringIO()
-    write_analysis_csv(buf, sp, an, hide_solution=hide)
+    write_analysis_csv(buf, sp, an)
     return list(csv.reader(io.StringIO(buf.getvalue())))
 
 
 def test_csv_has_sections_units_and_separate_input_inferred_columns():
     sp, an = _run({'H': 70, 'He': 25, 'Na': 2, 'Ca': 1, 'Fe': 2})
-    rows = _csv(sp, an, hide=False)
+    rows = _csv(sp, an)
     flat = [r[0] for r in rows if r]
     assert '# SECTION: element summary' in flat
     assert '# SECTION: detected lines' in flat
@@ -179,12 +179,3 @@ def test_csv_has_sections_units_and_separate_input_inferred_columns():
     assert len(rows[spec_head_i]) == 5 + 5  # five per-element truth columns
     hydrogen = next(r for r in rows if r and r[0] == 'Hydrogen')
     assert float(hydrogen[1]) == pytest.approx(70.0)
-
-
-def test_csv_hides_solution_for_mystery():
-    sp, an = _run({'H': 45, 'He': 25, 'Na': 15, 'Ca': 10, 'Fe': 5})
-    text = '\n'.join(','.join(r) for r in _csv(sp, an, hide=True))
-    rows = _csv(sp, an, hide=True)
-    assert all(r[1:9] == ['Hidden'] * 8 for r in rows if r and r[0] in {'Hydrogen', 'Helium', 'Sodium', 'Calcium', 'Iron'})
-    assert 'simulated truth' not in text
-    assert 'radial_velocity_kms=0.0' not in text.split('Estimated by analysis')[0]

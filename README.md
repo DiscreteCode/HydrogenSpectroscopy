@@ -67,10 +67,9 @@ analysis* and *Limitations* below). See `docs/PROGRESS.md` and
   with adjustable abundances, noise, line width and radial velocity (live
   updates); per-element absorption contributions; blind analysis (detected
   vs reference wavelength, element, line info, fitted depth, significance,
-  blend flags); simulated-**input** vs **inferred** abundance charts; CSV
-  export (summary, line table, full spectrum); in-app limitations tab;
-  mystery-star challenge with solution reveal. Not an astrophysical
-  abundance solver.
+  blend flags); simulated-**input** vs **inferred** abundance chart; demo
+  presets; CSV export (summary, line table, full spectrum); in-app
+  limitations tab. Not an astrophysical abundance solver.
 - **Theory / Learn** -- the underlying physics with equations, linked
   into the relevant interactive page
 - **About / References** -- project purpose, scientific scope, honest
